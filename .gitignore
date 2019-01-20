@@ -1,0 +1,6 @@
+asa-s16le
+asa-s16le.dSYM
+*.o
+*.d
+.vscode
+.DS_Store
