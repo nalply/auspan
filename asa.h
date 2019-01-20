@@ -52,29 +52,28 @@ extern void asa_init_dbg();
 
 extern char *asa_time();
 
-#define asa_trc(fmt, ...) { if (asa_trc_enabled) { \
-  fprintf(stderr, "\e[36mT\e[m %s %s:%d ", asa_time(), __FILE__, __LINE__); \
-  fprintf(stderr, fmt, ## __VA_ARGS__); \
-  fputc('\n', stderr); \
-} }
-
-#define asa_dbg(fmt, ...) { if (asa_dbg_enabled) { \
-  fprintf(stderr, "\e[33mD\e[m %s %s:%d ", asa_time(), __FILE__, __LINE__); \
-  fprintf(stderr, fmt, ## __VA_ARGS__); \
-  fputc('\n', stderr); \
-} }
-
-#define asa_info(fmt, ...) { \
-  asa_dbg("invocation site of asa_info():"); \
-  fprintf(stderr, "\e[32mI\e[m "); \
+#define _asa_out(ansi_color, code, time, fmt, ...) { \
+  fprintf(stderr, "\e[%sm%s\e[m %s%s:%d ", \
+    ansi_color, code, time, __FILE__, __LINE__); \
   fprintf(stderr, fmt, ## __VA_ARGS__); \
   fputc('\n', stderr); \
 }
 
+#define asa_trc(fmt, ...) { if (asa_trc_enabled) \
+  _asa_out("36", "T", asa_time(), fmt, ## __VA_ARGS__); \
+}
+
+#define asa_dbg(fmt, ...) { if (asa_dbg_enabled) \
+  _asa_out("33", "D", asa_time(), fmt, ## __VA_ARGS__); \
+}
+
+#define asa_info(fmt, ...) { \
+  asa_dbg("invocation site of asa_info():"); \
+  _asa_out("32", "Info", "", fmt, ## __VA_ARGS__); \
+}
+
 #define asa_error(fmt, ...) { \
   asa_dbg("invocation site of asa_error():"); \
-  fprintf(stderr, "\e[31;43mError\e[m "); \
-  fprintf(stderr, fmt, ## __VA_ARGS__); \
-  fputc('\n', stderr); \
+  _asa_out("31", "Error", "", fmt, ## __VA_ARGS__); \
   exit(1); \
 }

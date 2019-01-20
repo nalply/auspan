@@ -118,13 +118,13 @@ void asa_cleanup(asa_t asa) {
 }
 
 
-#define DATE_TIME_BUF_SIZE 24
+#define DATE_TIME_BUF_SIZE 25
 
 char *asa_time() {
   static char buf[DATE_TIME_BUF_SIZE];
   time_t now = time(NULL);
   struct tm *local = localtime(&now);
-  strftime(buf, DATE_TIME_BUF_SIZE, "%F %T", local);
+  strftime(buf, DATE_TIME_BUF_SIZE, "%F %T ", local);
   return buf;
 }
 
