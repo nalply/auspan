@@ -1,33 +1,29 @@
 #!/usr/bin/env julia
 
-using Random
+import Random
 Random.seed!(0)
-
-# Generate PCM s16le data by some sine waves and noise
-
+r = () -> rand()
+n = 2048
+bias = 0
+noise_amplitude = 0
+phi = MathConstants.golden
+#periods = [1phi] #, 2phi, 3phi, 4phi, 6phi]
+periods = [4.9]
+amplitudes = [1] #, 10, 10, 10, 10]
 
 # f() is expected to return values in range [-1, 1]
 function f(x :: Number)
-  bias = 0
+  noise = 2 * noise_amplitude * r() - noise_amplitude
+  wave = sum(sin.(2 .* pi .* float(x) ./ float(periods)) .* amplitudes)
 
-  noise_amplitude = 10
-  noise = 2 * noise_amplitude * rand() * rand() - noise_amplitude
-
-  periods = [2.2, 3, 4.9, 5.3]
-  amplitudes = [23, 7, 11, 10]
-  x = float(x)
-  wave = sum(sin.(2 .* pi .* x ./ float(periods)) .* amplitudes)
-
-  y = noise + wave + bias
+  y0 = noise + wave + bias
   amplitude = noise_amplitude + sum(amplitudes) + bias
-  @assert abs(y) <= amplitude
-  y = y / amplitude
-
-  y
+  @assert abs(y0) <= amplitude 
+  y0 / amplitude # return such that -1 <= y <= 1
 end
 
 max = typemax(Int16)
-for x in 1:2048
+for x in 0:n - 1
   y = floor(f(x) * max)
   y = Int16(y)
 

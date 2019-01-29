@@ -13,7 +13,9 @@
 
 
 // TODO: autogenerate
-#define VERSION "0.0.1"
+#define PROGRAM "asa-s16le"
+#define VERSION "0.0.2"
+#define COMPILE PROGRAM " " VERSION " compiled at " __DATE__ " " __TIME__
 
 typedef int16_t s16le_t;
 
@@ -23,10 +25,12 @@ typedef struct asa_struct_t {
   size_t size;
   size_t num_spans;
   size_t num_bands;
+  size_t num_spans_read;
+  size_t num_spectrums_written;
   double *bands;
   double max;
   void *pcm_s16le_buffer;
-  void (*window)(double*);
+  void (*window)(double*, size_t);
   double *r;
   fftw_complex *c;
   fftw_plan plan;
@@ -52,9 +56,13 @@ extern void asa_init_dbg();
 
 extern char *asa_time();
 
-#define _asa_out(ansi_color, code, time, fmt, ...) { \
-  fprintf(stderr, "\e[%sm%s\e[m %s%s:%d ", \
-    ansi_color, code, time, __FILE__, __LINE__); \
+
+#define _stringify0(line) ":" #line
+#define _stringify(line) _stringify0(line)
+#define _line _stringify(__LINE__)
+#define _asa_out(ansi_color, code, t, fmt, ...) { \
+  fprintf(stderr, "\e[%sm%s\e[m %s%s%s%s", ansi_color, code, \
+    t ? t : "", t ? __FILE__ : "", t ? _line : "", t ? " " : ""); \
   fprintf(stderr, fmt, ## __VA_ARGS__); \
   fputc('\n', stderr); \
 }
@@ -68,12 +76,12 @@ extern char *asa_time();
 }
 
 #define asa_info(fmt, ...) { \
-  asa_dbg("invocation site of asa_info():"); \
-  _asa_out("32", "Info", "", fmt, ## __VA_ARGS__); \
+  asa_dbg("invocation site of \e[32mInfo\e[m below:"); \
+  _asa_out("32", "Info:", NULL, fmt, ## __VA_ARGS__); \
 }
 
 #define asa_error(fmt, ...) { \
-  asa_dbg("invocation site of asa_error():"); \
-  _asa_out("31", "Error", "", fmt, ## __VA_ARGS__); \
+  asa_dbg("invocation site of \e[31mError\e[m below:"); \
+  _asa_out("31", "Error:", NULL, fmt, ## __VA_ARGS__); \
   exit(1); \
 }
