@@ -1,5 +1,7 @@
 #!/usr/bin/env julia
 
+using Printf
+
 function usage(msg)
   print("""
     Error: $msg
@@ -8,39 +10,57 @@ function usage(msg)
     Usage: $PROGRAM_FILE [options]
 
     Options:
-      -b number of spectrum bands (default 32, range 1-9999)
+      -b number of spectrum bins (default 32, range 1-9999)
+      -f frequency resolution (default 1)
     """)
   exit(1)
 end
 
-num_bands = 32
-if 2 == length(ARGS) && "-b" == ARGS[1] && occursin(r"^\d{1,4}$", ARGS[2])
-  num_bands = parse(Int, ARGS[2])
-  if !(1 <= num_bands <= 9999) usage("num_bands outside range 1-9999") end
-elseif  0 != length(ARGS)
-  usage("wrong number of arguments")
+function parse_args()
+  size = 32
+  freq = 1
+  arglen = length(ARGS)
+  i = 0
+
+  while i < arglen
+    if 2 + i <= arglen && "-b" == ARGS[1 + i]
+      if !occursin(r"^\d{1,4}$", ARGS[2 + i]) usage("-b malformed") end
+      size = parse(Int, ARGS[2 + i])
+      if !(1 <= size <= 9999) usage("-b outside range 1-9999") end
+      i += 2
+    elseif 2 + i <= arglen && "-f" == ARGS[1 + i]
+      try 
+        freq = parse(Float64, ARGS[2 + i]) 
+      catch 
+        usage("-f malformed")
+      end
+      i += 2
+    else
+      usage("unknown parameter")
+    end
+  end
+
+  return (size, freq)
 end
 
-s = "0123456789abcdefghijklmnopqrstuvwxyz"
-n = length(s)
+size, freq = parse_args()
 for_line_len = 255 / 73.99
 
-print("\e[2J\e[H")
-println("Audio Spectrum with $num_bands band(s)")
+#print("\e[2J\e[H")
+println("Audio Spectrum with $size bin(s)")
 println('-' ^ 79)
 
 while true
-  spectrum = read(stdin, num_bands)
-  if length(spectrum) != num_bands break end
+  spectrum = read(stdin, size)
+  if length(spectrum) != size break end
 
-  for i in 1:num_bands
-    write(stdout, s[i % n + 1:i % n + 1])
-    write(stdout, lpad(spectrum[i], 4, ' '), "|")
+  for i in 1:size
+    @printf("%7.1f %3d|", i * freq, spectrum[i])
     len = Int(floor(spectrum[i] / for_line_len))
     write(stdout, '#' ^ len, ' ' ^ (73 - len), '\n')
   end
   sleep(0.1)
-  print("\e[$(num_bands)A");
+  print("\e[$(size)A");
 end
-print("\e[$(num_bands)B");
+print("\e[$(size)B");
 println('-' ^ 79)

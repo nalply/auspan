@@ -1,7 +1,7 @@
 # Simple Audio Spectrum Analyser (simple-asa)
 
 Take a mono raw audio stream, PCM 16bit little endian, as produced by the fifo
-output of mpd and generate a binary spectrum with a number of 8bit bands
+output of mpd and generate a binary spectrum with a number of 8bit bins
 directly usable by visual spectrum analyser projects like for Raspberry Pi.
 
 Inspired by [cava](https://github.com/karlstav/cava), especially for options
@@ -13,7 +13,7 @@ mono audio and outputs 8bit unsigned spectrum magnitudes.
 
 Because, duh, that's simple!
 
-## Note!
+## Note
 
 This software is not ready for everybody's use. Not all options
 are implemented, also tests are still missing.
@@ -29,7 +29,7 @@ are implemented, also tests are still missing.
 
 `$ simple-asa -s 2 -b 10 /tmp/mpd.fifo /tmp/asa.fifo`
 
-From mpd generate a 10-band spectrum about every 93 ms.
+From mpd generate a 10-bin spectrum about every 93 ms.
 
 It's possible to configure mpd to output **mono** audio to a fifo. The audio
 data is PCM with signed 16bit little-endian integer samples at a sample rate

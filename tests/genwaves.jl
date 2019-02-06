@@ -3,12 +3,12 @@
 import Random
 Random.seed!(0)
 r = () -> rand()
-n = 2048
+n = 1024
 bias = 0
 noise_amplitude = 0
 phi = MathConstants.golden
 #periods = [1phi] #, 2phi, 3phi, 4phi, 6phi]
-periods = [4.9]
+periods = [20]
 amplitudes = [1] #, 10, 10, 10, 10]
 
 # f() is expected to return values in range [-1, 1]
