@@ -40,87 +40,33 @@ works for you.
 
 ## Power of Two
 
-If we combine bins, we gain even more flexibility but must use rather large
-FFT sizes. This opens up another possbility: lines spaced by power of two.
-The frequency bins are spaced linearly, but this is not what we hear. A note
-one octave higher is double the frequency. This means, frequencies in music
-are governed by the **Power of Two**.
+If we combine bins, we gain even more flexibility but must use rather large FFT
+sizes. This opens up another possbility: lines spaced by power of two. The
+frequency bins are spaced linearly, but this is not what we hear. A musical
+note one octave higher is double the frequency and another octave higher four
+times the frequency and so on: this is the musical law of the Power of Two.
 
-For this we need to allocate $b$ bins to $l$ lines such that a line $k \in \{1,
-l\}$ has about the double bins than a line representing one octave lower. If we
-do this carefully we might even be able to map musical notes to analyser lines.
+The visual analyser should respect this law. An analyser with a linear sequence
+of lines appears to have more «resolution» for the higher musical notes. Notes
+C and D might be too near to each other to be separated in a visual spectrum
+analyse, but the notes C'' and D'' two octaves higher show up as two different
+analyser lines. This can feel wrong.
 
 ### Approach
 
-The basis is the power of two $g(x) = a 2^x$ and we solve for $a$ such that we get what we want. Because we distribute only whole bins we need to work with integers.
+The basis is this function: $g(j) = a p^j$, with $j \in \{0,\,\ldots,\,l-1 \}$,
+where $l$ is the number of lines or bands of the analyser and $p$ the
+exponentiation base. If a line represents a musical note in the twelve-tone
+equal temperament, use $p = \sqrt[12]{2}$.
 
-$$\bar{g}(k) = \lceil a 2^k \rceil $$
+$g()$ is the number of bins the line $j$ is assigned to. However we need
+positive integer numbers. This introduces a possibly strong distortion, however
+even with the distortion we would get a more natural representation. Any
+monotonic rising function is better than a linear representation. If there are
+many bins that even low lines get a few bins, there is little distortion. The
+distortion is the strongest if there are not enough bins so that the first
+lines all get only one bin. You can experiment with the tool `bins.jl`.
 
-The rounding up introduces distortions, for example if $g(x) \ll 1$ for the
-lower lines they take away bins from the higher lines. At least it's a better
-approximation to the natural experience of sound than the linear distribution
-of lines. Even a simple stepwise linear increase of bins would be better.
-
-The sum of bins over all lines is:
-
-$$\sum_{k=0}^{l-1}{\bar{g}(k) = b}$$
-
-however $\bar{g}(k)$ is not easily solvable. Without the rounding up the
-solution is $a=\frac{b}{2^l-1}$. So let's approach this heuristically instead.
-To explain the approach I draw $g(x)$ on grid paper. Each box corresponds to
-a bin, this means we should have about $b$ boxes below the graph. We start
-with the bottommost horizontal line of boxes between $k_0$ and $k_0+l-1$.
-
-First we solve for $a$ the sum of $g(x_j)$ where $x_j=k_0+j$ and have
- $a=b/(2^l-1)$; and also for $x$ where the graph intersects with the horizontal
- line and have $x=lb\;i-lb\;a$ and round up to get $k_i$. This is the left side
- of the new bottommost horizonal line of boxes then we repeat till all the
- boxes aka the bins are exhausted.
-
-So we start with:
-
-1. $i=0$
-1. $b_0=b$
-1. $l_0=l$
-1. $k_0=k$
-
-then we repeat the following steps:
-
-1. $i=i+1$
-1. $a_i = b/(2^{l_{i-1}}-1)\qquad$ solution of the sum of $g(x_j)$
-1. $x_i = lb\;i-lb\;a\qquad$ solution of $g(x_i) = i$
-1. $k_i = \lceil x_i \rceil$
-1. $\delta_i=k_{i-1}-I_{k_i-1}^{k_i}\qquad$ see below for $I$
-1. $l_i = l_{i-1} + k_0 - k_{i-1} + 1$  
-1. $b_i = b_{i-1} - \delta - l$
-1. Go back to step $\;1\quad$ if $b > 0$
-
-With $\delta$ we try to correct the rounding distortion for the next
-iteration:
-
-$$I_{k_i-1}^{k_i} = \int_{k_i-1}^{k_i} g(x)dx 
-  = \frac{a2^{k_{i-1}}(2^{k_{i-1} - k_i} - 1)}{ln\,2} $$
-
-$\delta$ is the difference between the area below the smooth curvature of
-$g(x)$ and the blocky distribution of whole bins. We transfer the error to
-the next iteration and resolve for $a$. This means that we get a piecewise
-function but that's better than an iteration where the number of bins doesn't
-match up at the end.
-
-**Variation** for step 3: use $lb(i + \epsilon)$ for $0 < \epsilon ≤ 1$,
-perhaps this minimises the error
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+So we first calculate $\lceil g()\rceil$ naively then take away bins where it
+hurts the least, mostly at the higher frequency because it doesn't matter if
+a line has 500 or 499 bins. See `bins.jl` how this is implemented.

@@ -3,9 +3,10 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdarg.h>
-#include <errno.h>
 #include <string.h>
+#include <time.h>
 #include "asa.h"
+#include "asa_dbg.h"
 
 
 const char* window_names[] = { 
@@ -18,7 +19,7 @@ const int x = 1 << 20;
 void asa_init_fft(asa_t asa) {
   asa->d = fftw_alloc_real(asa->param.n);
   asa->c = fftw_alloc_complex(asa->param.m);
-  if (!asa->d || !asa->c) asa_error("out of memory");
+  if (!asa->d || !asa->c) asa_oom();
   asa->plan = fftw_plan_dft_r2c_1d(
     asa->param.n, asa->d, asa->c, FFTW_ESTIMATE);
   if (!asa->plan) asa_error("fftw plan failed");
@@ -66,7 +67,7 @@ int asa_read(asa_t asa) {
 
       if (len == size) break;
       if (len == 0) return 0; // End of file
-      if (len == -1) asa_error("skipping: %s", strerror(errno));
+      if (len == -1) asa_error("skipping: %m");
 
       size -= len;
     }
@@ -93,7 +94,7 @@ int asa_read(asa_t asa) {
     }
 
     // Error!
-    if (len == -1) asa_error("read s16le: %s", strerror(errno));
+    if (len == -1) asa_error("read s16le: %m");
     
     size -= len;
     p += len;
