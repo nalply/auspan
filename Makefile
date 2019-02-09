@@ -12,9 +12,13 @@ DEP=$(SRC:.c=.d)
 
 all: $(EXE)
 
-.PHONY: clean
+.PHONY: clean test
 clean:
 	$(RM) *.o *.d $(EXE)
+	$(RM) -r *.dSYM
+
+test:
+	$(MAKE) -C $@
 
 %: %.o $(OBJ)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@

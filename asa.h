@@ -53,6 +53,8 @@ typedef struct asa_struct_t {
 
 extern void asa_init_dbg();
 
+extern int* asa_distribute_bins(int l, int b, double p);
+
 extern void asa_init_fft(asa_t asa);
 
 extern int asa_read(asa_t asa);
@@ -61,7 +63,8 @@ extern void asa_pad_and_window(asa_t asa);
 
 extern void asa_run_fft(asa_t asa);
 
-extern void asa_spectrum(asa_t asa);
+// Get bins from the complex fft result then combine bins to lines
+extern void asa_lines(asa_t asa);
 
 extern void asa_write(asa_t asa);
 
@@ -70,5 +73,20 @@ extern void asa_cleanup(asa_t asa);
 extern int asa_dbg_enabled, asa_trc_enabled;
 
 extern char *asa_time();
+
+static inline int sum(int *g, int l) {
+  int result = 0;
+  for (int i = 0; i < l; i++) result += g[i];
+  return result;
+}
+
+#define min(a, b) ({ \
+  __typeof__ (a) _a = (a); \
+  __typeof__ (b) _b = (b); \
+  _a < _b ? _a : _b; \
+})
+
+
+
 
 #endif

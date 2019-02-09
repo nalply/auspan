@@ -1,23 +1,21 @@
-#include "../asa.h"
-
-#define N 100
+#include <asa.h>
+#include <stdlib.h>
+#include <string.h>
 
 __attribute__((noreturn))
 static void usage() {
-  fputs(
-    "dump_window n window\n"
-    "  where n <= 10000 and window one of:\n"
-    "    boxcar hann flattop blackmanharris\n"
-    "output: n space-separated numbers up to 10000"
-    "", stderr
-  );
+  fprintf(stderr, "Usage: window <n> <window>\n"
+      "  where: 1 <= n <= %d; window one of:", x);
+  for (int i = 0; i <= W_LAST; i++)
+    fprintf(stderr, " %s", window_names[i]);
+  fputs("\n", stderr);
   exit(1);
 }
 
 int main(int argc, char **argv) {
   if (argc != 3) usage();
   unsigned int n = strtoul(argv[1], NULL, 10);
-  if (n > 10000) usage();
+  if (n > x) usage();
   int w;
   for (w = W_FIRST; w <= W_LAST; w++)
     if (0 == strcmp(argv[2], window_names[w])) break;
@@ -34,10 +32,11 @@ int main(int argc, char **argv) {
     .param.s = n,
   };
 
-  for (int i = 0; i < N; i++) s16le[i] = 10000;
+  for (int i = 0; i < n; i++) s16le[i] = 10000;
 
   asa_pad_and_window(&asa);
 
-  for (int i = 0; i < n; i++) printf("%0.0f ", asa.d[i]);
+  printf("%d %s:", n, window_names[w]);
+  for (int i = 0; i < n; i++) printf(" %.0f", asa.d[i]);
   puts("");
 }

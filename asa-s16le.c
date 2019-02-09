@@ -34,78 +34,20 @@ static void usage(char* msg) {
     "Options:                            (x = 2^20 = 1048576, m = 1 + n / 2)\n"
     "  -v print version                       default   limits\n"
     "  -s number of samples taken in a sequence    32   1 <= s <= x\n"
-    "  -n fft size with zero padding                s   s <= n <= x\n"
-    "  -b b0,b1 use bins from b0 to b1          1,m-2   0 <= b0 <= b1 <= m-1\n"
-    "     spectrums contain b = b1 - b0 unsigned 8-bit bins\n"
-    "  -p p combine bins as per power p             1   1 <= p <= 2\n"
     "  -r number of sequences per spectrum          1   1 <= r <= 999\n"
     "  -d distance between sequence starts          s   1 <= d <= x\n"
     "         or in % of s                       100%   1% <= d <= 10000%\n"
     "     spectrums output at frequency: sampling frequency / d / r\n"
     "  -w window function, one of: boxcar hann flattop blackmanharris,\n"
     "     default hann\n"
+    "  -n fft size with zero padding                s   s <= n <= x\n"
+    "  -b b0,b1 use bins from b0 to b1          1,m-2   0 <= b0 <= b1 <= m-1\n"
+    "     spectrums contain b = b1 - b0 unsigned 8-bit bins\n"
+    "  -p distribute bins to the power of p         1   1 <= p <= 2\n"
+    "  -l number of spectrum lines                  b   1 <= l <= b\n"
     "", stderr
   );
   exit(127);
-}
-
-
-static inline double real_g(int j, int b, int l, double p) {
-  return b * (p - 1) * pow(p, j) / pow(p, l - 1);
-}
-
-static inline double signum(double x) {
-  if (x > 0.0) return 1.0;
-  if (x < 0.0) return -1.0;
-  return x; // also return NaN
-}
-
-static inline double weight_difference(int k, double g) {
-  return k / fabs(k - g + 1) * signum(log(k));
-}
-
-static inline int sum(int *g, int l) {
-  int result = 0;
-  for (int i = 0; i < l; i++) result += g[i];
-  return result;
-}
-
-static int* distribute_bins(int l, int b, double p) {
-  double q[l];        // where g[j] = ceil(q[j]) for all j in 0..l-1
-  double weights[l];  // to determine the next bin to take away
-  int *g = malloc(l * sizeof(int));
-  if (!g) asa_oom();
-
-  // todo p == 1
-  assert(p > 1.0 && p <= 2.0);
-
-  asa_trc_o(OUT_START, "g: first approximation:\n ");
-  int wb = 0;
-  for (int j = 0; j < l; j++) {
-    q[j] = real_g(j, b, l, p);
-    g[j] = ceil(q[j]);
-    wb += asa_trc_o(OUT_CONT, " %d", g[j]);
-    if (wb > 70) { wb = 0; asa_trc_o(OUT_CONT, "\n "); };
-  }
-  int g_sum = sum(g, l);
-  asa_trc_o(OUT_END, "\n  sum %d overshoot %d", g_sum, g_sum - b);
-
-  // Take away overdistributed bins where it hurts the least
-  while (sum(g, l) > b) {
-    for (int j = 0; j < l; j++) 
-      weights[j] = weight_difference(g[j], q[j]);
-
-    double max = -INFINITY;
-    int index = 0;
-    for (int j = 0; j < l; j++)
-      if (weights[j] > max) 
-        max = weights[j], index = j;
-
-    // Take the bin away!!
-    g[index] -= 1;
-  }
-
-  return g;
 }
 
 
@@ -141,31 +83,6 @@ static void parse_args(int argc, char **argv, asa_t asa) {
         s_set = 1;
       } break;
 
-      case 'n': {
-        result = strtoll(optarg, NULL, 10);
-        p.n = result;
-        p.m = 1 + p.n / 2;
-        n_set = 1;
-      } break;
-      
-      case 'b': {
-        int num = sscanf(optarg, "%u,%u", &p.b0, &p.b1);
-        if (num != 2) usage("-b malformed");
-        b_set = 1;
-      } break;
-
-      case 'p': {
-        int num = sscanf(optarg, "%lf", &p.p);
-        if (num != 1) usage("-p invalid value");
-        if (p.p < 1.0 || p.p > 2.0) usage("-p out of limit");
-      } break;
-
-      case 'l': {
-        result = strtoll(optarg, NULL, 10);
-        p.l = result;
-        l_set = 1;
-      } break;
-
       case 'r': {
         result = strtoll(optarg, NULL, 10);
         if (result < 1 || result > 999) usage("-r out of limit");
@@ -190,6 +107,31 @@ static void parse_args(int argc, char **argv, asa_t asa) {
         for (p.w = W_FIRST; p.w <= W_LAST; p.w++)
           if (0 == strcmp(optarg, window_names[p.w])) break;
         if (p.w > W_LAST) usage("-d invalid window type");
+      } break;
+
+      case 'n': {
+        result = strtoll(optarg, NULL, 10);
+        p.n = result;
+        p.m = 1 + p.n / 2;
+        n_set = 1;
+      } break;
+      
+      case 'b': {
+        int num = sscanf(optarg, "%u,%u", &p.b0, &p.b1);
+        if (num != 2) usage("-b malformed");
+        b_set = 1;
+      } break;
+
+      case 'p': {
+        int num = sscanf(optarg, "%lf", &p.p);
+        if (num != 1) usage("-p invalid value");
+        if (p.p < 1.0 || p.p > 2.0) usage("-p out of limit");
+      } break;
+
+      case 'l': {
+        result = strtoll(optarg, NULL, 10);
+        p.l = result;
+        l_set = 1;
       } break;
 
       default: usage("invalid option(s) or missing argument(s)");
@@ -229,35 +171,36 @@ static void parse_args(int argc, char **argv, asa_t asa) {
     asa_dbg("'%s' opened writeonly append, fd %d", out, asa->fd_out);
   }
 
-  p.g = distribute_bins(p.l, p.b, p.p);
+  p.g = asa_distribute_bins(p.l, p.b, p.p);
 
   asa_info_o(OUT_START, ""
     "Running with these parameters:                  (f: sampling frequency)\n"
     "  w %-14s window function"
     "  s %6d         number of samples in a sequence%s\n"
-    "  n %6d         fft input size; frequency resolution is f / n, for\n"
-    "                   44.1 kHz it's %.3f Hz\n"
     "  r %6d         number of sequences used per generated spectrum\n"
     "  d %6d         distance between sequence starts; spectrums come at\n"
     "                   f / r / d, for 44.1 kHz at %.3f Hz\n"
+    "  n %6d         fft input size; frequency resolution is f / n, for\n"
+    "                   44.1 kHz it's %.3f Hz\n"
     "  m %6d         fft output size; using bins %d to %d, %d total\n"
     "  p      %09.7f power distribution to %d analyser lines:\n"
     ""
       , window_names[p.w]
       , p.s , p.n > p.s ? ", sequence zero-padded" : ""
-      , p.n, 44100.0 / p.n
       , p.r, p.d
       , 44100.0 / p.r / p.d
+      , p.n, 44100.0 / p.n
       , p.m, p.b0, p.b1, p.b
       , p.p, p.l
   );
 
-  int wb = asa_info_o(OUT_CONT, "   ");
+  char *indent = "                  ";
+  int wb = asa_info_o(OUT_CONT, "%s", indent);
   for (int j = 0; j < p.l; j++) {
     wb += asa_info_o(OUT_CONT, " %d", p.g[j]);
-    if (wb > 70) { wb = 0; asa_info_o(OUT_CONT, "\n   "); }
+    if (wb > 70) { wb = 0; asa_info_o(OUT_CONT, "\n%s", indent); }
   }
-  asa_info_o(OUT_END, "\n    sum %d", sum(p.g, p.l));
+  asa_info_o(OUT_END, "\n%s sum %d", indent, sum(p.g, p.l));
   assert(sum(p.g, p.l) == p.b);
 
   asa->param = p;
@@ -289,7 +232,7 @@ int main(int argc, char **argv) {
   while (asa_read(asa)) {
     asa_pad_and_window(asa);
     asa_run_fft(asa);
-    asa_spectrum(asa);
+    asa_lines(asa);
     asa_write(asa);
   }
 

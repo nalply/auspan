@@ -65,9 +65,11 @@
 
 #define asa_trc(fmt, ...) ({ asa_trc_o(OUT, fmt, ##__VA_ARGS__); })
 
-#define asa_dbg(fmt, ...) ({ asa_dbg_enabled \
-  ? _ASA_OUT(D_CLR, "D", asa_time(), OUT, fmt, ##__VA_ARGS__) : 0; \
+#define asa_dbg_o(out, fmt, ...) ({ asa_dbg_enabled \
+  ? _ASA_OUT(D_CLR, "D", asa_time(), out, fmt, ##__VA_ARGS__) : 0; \
 })
+
+#define asa_dbg(fmt, ...) ({ asa_dbg_o(OUT, fmt, ##__VA_ARGS__); })
 
 #define _ASA_INVOCATION_SITE(ansi_color, code) ({ \
   asa_dbg("invocation site of " ANSI(ansi_color) code ANSI(RESET) " below:"); \

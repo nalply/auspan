@@ -3,7 +3,7 @@
 import Random
 Random.seed!(0)
 r = () -> rand()
-n = 1024
+n = 4096
 bias = 0
 noise_amplitude = 0
 phi = MathConstants.golden
