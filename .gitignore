@@ -1,5 +1,5 @@
-asa-s16le
-asa-s16le.dSYM
+asa
+asa.dSYM
 *.o
 *.d
 .vscode

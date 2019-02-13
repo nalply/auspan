@@ -1,7 +1,6 @@
 #include "asa.h"
-#include "asa_dbg.h"
+#include "y_dbg.h"
 #include <fftw3.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -13,6 +12,12 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+
+
+// TODO: autogenerate
+#define PROGRAM "asa"
+#define VERSION "0.0.5"
+#define COMPILE PROGRAM " " VERSION " compiled at " __DATE__ " " __TIME__
 
 
 __attribute__((noreturn)) 
@@ -60,7 +65,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
     .w = W_HANN,
   };
 
-  asa_trc("s %d n %d m %d b0 %d b1 %d b %d l %d p %f r %d d %d w %s",
+  y_trc("s %d n %d m %d b0 %d b1 %d b %d l %d p %f r %d d %d w %s",
     p.s, p.n, p.m, p.b0, p.b1, p.b, p.l, p.p, p.r, p.d, window_names[p.w]);
 
   char opt;
@@ -68,7 +73,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   int s_set = 0, n_set = 0, d_set = 0, b_set = 0, l_set = 0;
 
   while (-1 != (opt = getopt (argc, argv, "vhs:n:b:p:l:r:d:w:"))) {
-    asa_trc("opt %c optarg '%s' optind %d", opt, optarg, optind);
+    y_trc("opt %c optarg '%s' optind %d", opt, optarg, optind);
     switch (opt) {
       case 'v': version();
 
@@ -151,29 +156,29 @@ static void parse_args(int argc, char **argv, asa_t asa) {
 
   if (argc - optind == 0) {
     asa->fd_in = STDIN_FILENO;
-    asa_info("stdin used as input");
+    y_info("stdin used as input");
   }
   else {
     char *in = argv[optind + 0];
     asa->fd_in = open(in, O_RDONLY);
-    if (asa->fd_in == -1) asa_error("input: %s", strerror(errno));
-    asa_dbg("'%s' opened readonly, fd %d", in, asa->fd_in);
+    if (asa->fd_in == -1) y_error("input: %s", strerror(errno));
+    y_dbg("'%s' opened readonly, fd %d", in, asa->fd_in);
   }
 
   if (argc - optind <= 1) {
     asa->fd_out = STDOUT_FILENO;
-    asa_info("stdout used as output");
+    y_info("stdout used as output");
   }
   else {
     char *out = argv[optind + 1];
     asa->fd_out = open(out, O_WRONLY|O_CREAT|O_APPEND, 0666);
-    if (asa->fd_out == -1) asa_error("output: %s", strerror(errno));
-    asa_dbg("'%s' opened writeonly append, fd %d", out, asa->fd_out);
+    if (asa->fd_out == -1) y_error("output: %s", strerror(errno));
+    y_dbg("'%s' opened writeonly append, fd %d", out, asa->fd_out);
   }
 
   p.g = asa_distribute_bins(p.l, p.b, p.p);
 
-  asa_info_o(OUT_START, ""
+  y_info_o(Y_OUT_START, ""
     "Running with these parameters:                  (f: sampling frequency)\n"
     "  w %-14s window function"
     "  s %6d         number of samples in a sequence%s\n"
@@ -195,13 +200,13 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   );
 
   char *indent = "                  ";
-  int wb = asa_info_o(OUT_CONT, "%s", indent);
+  int wb = y_info_o(Y_OUT_CONT, "%s", indent);
   for (int j = 0; j < p.l; j++) {
-    wb += asa_info_o(OUT_CONT, " %d", p.g[j]);
-    if (wb > 70) { wb = 0; asa_info_o(OUT_CONT, "\n%s", indent); }
+    wb += y_info_o(Y_OUT_CONT, " %d", p.g[j]);
+    if (wb > 70) { wb = 0; y_info_o(Y_OUT_CONT, "\n%s", indent); }
   }
-  asa_info_o(OUT_END, "\n%s sum %d", indent, sum(p.g, p.l));
-  assert(sum(p.g, p.l) == p.b);
+  y_info_o(Y_OUT_END, "\n%s sum %d", indent, sum(p.g, p.l));
+  y_assert(sum(p.g, p.l) == p.b);
 
   asa->param = p;
 }
@@ -211,15 +216,15 @@ static struct asa_struct_t static_asa = { 0 };
 
 
 void exit_handler(void) {
-  asa_dbg("cleaning up");
+  y_dbg("cleaning up");
   if (static_asa.s16le) free(static_asa.s16le);
   asa_cleanup(&static_asa);
 }
 
 
 int main(int argc, char **argv) {
-  asa_init_dbg();
   atexit(exit_handler);
+  y_info("%s", COMPILE);
 
   asa_t asa = &static_asa;
   parse_args(argc, argv, asa);
@@ -227,7 +232,7 @@ int main(int argc, char **argv) {
   asa_param_t p = asa->param;
 
   asa->s16le = malloc(sizeof(int16_t) * p.s);
-  if (!asa->s16le) asa_oom();
+  if (!asa->s16le) y_oom();
 
   while (asa_read(asa)) {
     asa_pad_and_window(asa);
@@ -236,6 +241,6 @@ int main(int argc, char **argv) {
     asa_write(asa);
   }
 
-  asa_dbg("number of sequences read: %d", asa->num_in);
-  asa_dbg("number of spectrums written: %d", asa->num_out);
+  y_dbg("number of sequences read: %d", asa->num_in);
+  y_dbg("number of spectrums written: %d", asa->num_out);
 }

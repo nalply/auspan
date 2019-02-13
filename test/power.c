@@ -17,7 +17,6 @@ int main(int argc, char **argv) {
   if (b < l || b > x ) usage();
   double p = strtod(argv[3], NULL);
 
-  asa_init_dbg();
   int *lines = asa_distribute_bins(l, b, p);
 
   printf("%d %d %g:", b, l, p);

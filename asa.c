@@ -1,12 +1,10 @@
 #include <unistd.h>
 #include <math.h>
-#include <assert.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
 #include "asa.h"
-#include "asa_dbg.h"
+#include "y_dbg.h"
 
 
 const char* window_names[] = { 
@@ -17,7 +15,9 @@ const int x = 1 << 20;
 
 int* asa_distribute_bins(int l, int b, double p) {
   int *lines = malloc(l * sizeof(int));
-  if (!lines) asa_oom();
+  if (!lines) y_oom();
+
+
 
   // p == 1 means distribute linearly because p ^ x == 1 ^ x == 1, but we need
   // a special case: the formula for the exponents's sum diverges for p == 1 
@@ -30,48 +30,50 @@ int* asa_distribute_bins(int l, int b, double p) {
     return lines;
   }
 
-  assert(p > 1.0 && p <= 2.0);
+  y_assert(p > 1.0 && p <= 2.0);
   double g[l];
   
-  int wb = asa_dbg_o(OUT_START, "lines: approximation:");
+  int wb = y_dbg_o(Y_OUT_START, "lines: approximation:");
   for (int j = 0; j < l; j++) {
     double r = b * (1-p) * pow(p, j) / (1 - pow(p, l));
     g[j] = r;
     lines[j] = ceil(r);
-    wb += asa_dbg_o(OUT_CONT, " %d", lines[j]);
-    if (wb > 70) { wb = 0; asa_dbg_o(OUT_CONT, "\n "); };
+    y_assert_e(lines[j] > 0, "lines[j] %d", lines[j]);
+    
+    wb += y_dbg_o(Y_OUT_CONT, " %d", lines[j]);
+    if (wb > 70) { wb = 0; y_dbg_o(Y_OUT_CONT, "\n "); };
   }
   int lines_sum = sum(lines, l);
-  if (wb > 30) asa_dbg_o(OUT_CONT, "\n ");
-  asa_dbg_o(OUT_END, " sum %d overshoot %d", lines_sum, lines_sum - b);
+  if (wb > 30) y_dbg_o(Y_OUT_CONT, "\n ");
+  y_dbg_o(Y_OUT_END, " sum %d overshoot %d", lines_sum, lines_sum - b);
 
   // trace g
-  asa_trc_o(OUT_START, "g:\n ");
+  y_trc_o(Y_OUT_START, "g:\n ");
   for (int j = 0; j < l; j++) {
-    wb += asa_trc_o(OUT_CONT, " %g", g[j]);
-    if (wb > 70) { wb = 0; asa_trc_o(OUT_CONT, "\n "); };
+    wb += y_trc_o(Y_OUT_CONT, " %g", g[j]);
+    if (wb > 70) { wb = 0; y_trc_o(Y_OUT_CONT, "\n "); };
   }
-  asa_trc_o(OUT_END, "");
+  y_trc_o(Y_OUT_END, "");
 
   // Take away overdistributed bins where it hurts the least by weighting lines
   // Criteria: line > 1 and relative distance to real g
   int iteration = 0;
   double weights[l];
-  assert(lines_sum >= b);
+  y_assert(lines_sum >= b);
   while (sum(lines, l) > b) { // no more than l iterations
     iteration++;
-    asa_trc_o(OUT_START, "weights iteration %d:\n ", iteration);
+    y_trc_o(Y_OUT_START, "weights iteration %d:\n ", iteration);
     wb = 0;
     int zero = 1;
     for (int j = 0; j < l; j++) {
       if (lines[j] == 1) { weights[j] = 0; continue; }
-      if (zero) wb += asa_trc_o(OUT_CONT, " 0 (%d tines)", j - 1);
+      if (zero) wb += y_trc_o(Y_OUT_CONT, " 0 (%d tines)", j - 1);
       zero = 0;
       double distance = fabs(lines[j] - g[j]);
       double relative = log(g[j]);
       weights[j] = distance * relative;
-      wb += asa_trc_o(OUT_CONT, " %.2g", weights[j]);
-      if (wb > 70) { wb = 0; asa_trc_o(OUT_CONT, "\n "); };
+      wb += y_trc_o(Y_OUT_CONT, " %.2g", weights[j]);
+      if (wb > 70) { wb = 0; y_trc_o(Y_OUT_CONT, "\n "); };
     }
 
     double max = -INFINITY;
@@ -80,20 +82,20 @@ int* asa_distribute_bins(int l, int b, double p) {
       if (weights[j] > max) 
         max = weights[j], index = j;
 
-    if (wb > 30) asa_trc_o(OUT_CONT, "\n ");
-    asa_trc_o(OUT_END, " take away bin at index %d: %d", index, lines[index]);
+    if (wb > 30) y_trc_o(Y_OUT_CONT, "\n ");
+    y_trc_o(Y_OUT_END, " take away bin at index %d: %d", index, lines[index]);
     lines[index] -= 1; // Take one bin away
   }
 
   // debug lines
-  wb = asa_dbg_o(OUT_START, "lines:");
+  wb = y_dbg_o(Y_OUT_START, "lines:");
   for (int j = 0; j < l; j++) {
-    wb += asa_dbg_o(OUT_CONT, " %d", lines[j]);
-    if (wb > 70) { wb = 0; asa_dbg_o(OUT_CONT, "\n "); };
+    wb += y_dbg_o(Y_OUT_CONT, " %d", lines[j]);
+    if (wb > 70) { wb = 0; y_dbg_o(Y_OUT_CONT, "\n "); };
   }
-  asa_dbg_o(OUT_END, "");
+  y_dbg_o(Y_OUT_END, "");
 
-  assert(sum(lines, l) == b);
+  y_assert(sum(lines, l) == b);
   return lines;
 }
 
@@ -101,10 +103,10 @@ int* asa_distribute_bins(int l, int b, double p) {
 void asa_init_fft(asa_t asa) {
   asa->d = fftw_alloc_real(asa->param.n);
   asa->c = fftw_alloc_complex(asa->param.m);
-  if (!asa->d || !asa->c) asa_oom();
+  if (!asa->d || !asa->c) y_oom();
   asa->plan = fftw_plan_dft_r2c_1d(
     asa->param.n, asa->d, asa->c, FFTW_ESTIMATE);
-  if (!asa->plan) asa_error("fftw plan failed");
+  if (!asa->plan) y_error("fftw plan failed");
 }
 
 
@@ -122,7 +124,7 @@ int asa_read(asa_t asa) {
   // Overlap? Copy rest of s16le buffer to front
   if (asa->num_in && asa->param.s > asa->param.d) {
     int overlap = S16 * (asa->param.s - asa->param.d);
-    asa_trc("overlap %d", overlap);
+    y_trc("overlap %d", overlap);
     memmove(asa->s16le, asa->s16le + asa->param.d, overlap);
     size -= overlap;
     p += overlap;
@@ -137,21 +139,21 @@ int asa_read(asa_t asa) {
       char dummy[2000];
       int size = min(skip, sizeof(dummy));
       ssize_t len = read(in, dummy, size);
-      asa_trc("skip: read(%d, dummy, %d): %ld", in, size, len);
+      y_trc("skip: read(%d, dummy, %d): %ld", in, size, len);
 
       if (len == size) break;
       if (len == 0) return 0; // End of file
-      if (len == -1) asa_error("skipping: %m");
+      if (len == -1) y_error("skipping: %m");
 
       size -= len;
     }
   }
 
   while (1) {
-    assert(p + size == (char*)(asa->s16le + asa->param.s));
+    y_assert(p + size == (char*)(asa->s16le + asa->param.s));
 
     ssize_t len = read(in, p, size);
-    asa_trc("seq #%d: read(%d, p, %d): %ld", asa->num_in, in, size, len);
+    y_trc("seq #%d: read(%d, p, %d): %ld", asa->num_in, in, size, len);
 
     // Done!
     if (len == size) {
@@ -161,14 +163,14 @@ int asa_read(asa_t asa) {
 
     // End of file!
     if (len == 0) {
-      asa_info("end of file after reading %i sequences(s)", asa->num_in);
+      y_info("end of file after reading %i sequences(s)", asa->num_in);
       ssize_t unused = p - (char*)asa->s16le;
-      if (unused) asa_warn("%ld bytes discarded", unused);
+      if (unused) y_warn("%ld bytes discarded", unused);
       return 0;
     }
 
     // Error!
-    if (len == -1) asa_error("read s16le: %m");
+    if (len == -1) y_error("read s16le: %m");
     
     size -= len;
     p += len;
@@ -183,7 +185,7 @@ void asa_pad_and_window(asa_t asa) {
   const int i0 = (asa->param.n - asa->param.s) / 2;
   const int i1 = i0 + asa->param.s;
 
-  assert(asa->param.w >= W_FIRST && asa->param.w <= W_LAST);
+  y_assert(asa->param.w >= W_FIRST && asa->param.w <= W_LAST);
   switch (asa->param.w) {
 
     #define WINDOW(f) \
@@ -220,7 +222,7 @@ void asa_pad_and_window(asa_t asa) {
 
 
 void asa_lines(asa_t asa) {
-  assert(asa->param.b0 <= asa->param.b1);
+  y_assert(asa->param.b0 <= asa->param.b1);
 
   double *const d = asa->d;
   fftw_complex *const c = asa->c;
@@ -244,7 +246,7 @@ void asa_lines(asa_t asa) {
 
 
 void asa_write(asa_t asa) {
-  assert(asa->param.b0 <= asa->param.b1);
+  y_assert(asa->param.b0 <= asa->param.b1);
 
   const int b0 = asa->param.b0;
   const int b = asa->param.b;
@@ -256,9 +258,9 @@ void asa_write(asa_t asa) {
   }
 
   ssize_t result = write(fd, spectrum, b);
-  asa_trc("spectrum #%d write(%d, <p>, %d): %ld", asa->num_out, fd, b, result);
+  y_trc("spectrum #%d write(%d, <p>, %d): %ld", asa->num_out, fd, b, result);
   if (result == -1) {
-    asa_error("output error");
+    y_error("output error");
   }
   asa->num_out++;
 }
@@ -271,30 +273,4 @@ void asa_cleanup(asa_t asa) {
   fftw_cleanup();
 
   asa = (asa_t){ 0 };
-}
-
-
-#define DATE_TIME_BUF_SIZE 25
-
-char *asa_time() {
-  static char buf[DATE_TIME_BUF_SIZE];
-  time_t now = time(NULL);
-  struct tm *local = localtime(&now);
-  strftime(buf, DATE_TIME_BUF_SIZE, "%F %T ", local);
-  return buf;
-}
-
-
-
-int asa_dbg_enabled = 0;
-int asa_trc_enabled = 0;
-
-void asa_init_dbg() {
-  char* s = getenv("ASA_DBG");
-  if (s == NULL) return;
-
-  asa_dbg_enabled = s[0] == 'D' || s[0] == 'T';
-  asa_trc_enabled = s[0] == 'T';
-  asa_dbg("%s enabled", asa_trc_enabled ? "trace" : "debug");
-  asa_dbg("software %s", COMPILE);
 }

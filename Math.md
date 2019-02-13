@@ -55,7 +55,10 @@ frequency bins.
 FFT has as result $m$ bins linearly spaced in frequency from 0 to the Nyquist
 frequency ($f / 2$ where $f$ is the sampling frequency). So if we run an FFT
 with $n = 1024$ on a source with the sampling frequency $44.1$ kHz, we have
-$1025$ bins at a resolution of $f / n = 43.1$ Hz.
+$513$ bins at a resolution of $f / n = 43.1$ Hz, the first bin is at $0$ Hz
+(i.e. DC or bias), the second bin is at $43.1$ Hz, and so on, till the $513$th
+bin at $22050$ Hz (the Nyquist frequency). Usually the first and last bins
+aren't used.
 
 A practical example on how to cutoff frequencies: You want a visualiser with 28
 lines with a frequency resolution of 200 Hz with the first line starting at 600

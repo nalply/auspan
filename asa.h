@@ -4,11 +4,6 @@
 #include <fftw3.h>
 
 
-// TODO: autogenerate
-#define PROGRAM "asa-s16le"
-#define VERSION "0.0.3"
-#define COMPILE PROGRAM " " VERSION " compiled at " __DATE__ " " __TIME__
-
 #define W_BOXCAR         0
 #define W_HANN           1
 #define W_FLATTOP        2
@@ -51,8 +46,6 @@ typedef struct asa_struct_t {
   fftw_plan plan;         // fftw3 plan
 } *asa_t;
 
-extern void asa_init_dbg();
-
 extern int* asa_distribute_bins(int l, int b, double p);
 
 extern void asa_init_fft(asa_t asa);
@@ -69,10 +62,6 @@ extern void asa_lines(asa_t asa);
 extern void asa_write(asa_t asa);
 
 extern void asa_cleanup(asa_t asa);
-
-extern int asa_dbg_enabled, asa_trc_enabled;
-
-extern char *asa_time();
 
 static inline int sum(int *g, int l) {
   int result = 0;

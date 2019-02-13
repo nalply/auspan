@@ -2,8 +2,8 @@ CC=clang
 CFLAGS=-Wall -g
 LDLIBS=-lfftw3 -lm
 
-EXE=asa-s16le
-EXEOBJ=$(EXE:=.o)
+EXE=asa
+EXEOBJ=main.o
 SRC=$(wildcard *.c)
 OBJ=$(filter-out $(EXEOBJ),$(SRC:.c=.o))
 DEP=$(SRC:.c=.d)
@@ -20,7 +20,7 @@ clean:
 test:
 	$(MAKE) -C $@
 
-%: %.o $(OBJ)
+$(EXE): $(EXEOBJ) $(OBJ)
 	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 %.d: %.c
