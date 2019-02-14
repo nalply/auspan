@@ -25,7 +25,7 @@ function parse_args()
   while true
     if "-h" == ARGS[index] usage("") end
     if "-n" == ARGS[index]
-      try n = parse(Int, ARGS[index + 1])
+      try n = parse(Int, ARGS[1 + index ])
       catch e
         if isa(e, ArgumentError) usage("-n invalid integer: $(e.msg)") 
         else throw(e)
@@ -37,6 +37,7 @@ function parse_args()
     end
   end
 
+  # todo check argument count
   f = ARGS[index]
   try
     return (n, eval(Meta.parse("function(x) $f end")))

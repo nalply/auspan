@@ -2,8 +2,8 @@ CC=clang
 CFLAGS=-Wall -g
 LDLIBS=-lfftw3 -lm
 
-EXE=asa
-EXEOBJ=main.o
+EXE=ausa
+EXEOBJ=ausa.o
 SRC=$(wildcard *.c)
 OBJ=$(filter-out $(EXEOBJ),$(SRC:.c=.o))
 DEP=$(SRC:.c=.d)

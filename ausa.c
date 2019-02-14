@@ -1,5 +1,4 @@
 #include "asa.h"
-#include "y_dbg.h"
 #include <fftw3.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,9 +12,12 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+#define Y_DBG_MAIN
+#include "y_dbg.h"
+
 
 // TODO: autogenerate
-#define PROGRAM "asa"
+#define PROGRAM "ausa"
 #define VERSION "0.0.5"
 #define COMPILE PROGRAM " " VERSION " compiled at " __DATE__ " " __TIME__
 
@@ -161,7 +163,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   else {
     char *in = argv[optind + 0];
     asa->fd_in = open(in, O_RDONLY);
-    if (asa->fd_in == -1) y_error("input: %s", strerror(errno));
+    if (asa->fd_in == -1) y_error("open input: %s", y_strerr);
     y_dbg("'%s' opened readonly, fd %d", in, asa->fd_in);
   }
 
@@ -172,32 +174,34 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   else {
     char *out = argv[optind + 1];
     asa->fd_out = open(out, O_WRONLY|O_CREAT|O_APPEND, 0666);
-    if (asa->fd_out == -1) y_error("output: %s", strerror(errno));
+    if (asa->fd_out == -1) y_error("open output: %s", y_strerr);
     y_dbg("'%s' opened writeonly append, fd %d", out, asa->fd_out);
   }
 
-  p.g = asa_distribute_bins(p.l, p.b, p.p);
-
   y_info_o(Y_OUT_START, ""
     "Running with these parameters:                  (f: sampling frequency)\n"
-    "  w %-14s window function"
+    "  w %-14s window function\n"
     "  s %6d         number of samples in a sequence%s\n"
     "  r %6d         number of sequences used per generated spectrum\n"
     "  d %6d         distance between sequence starts; spectrums come at\n"
     "                   f / r / d, for 44.1 kHz at %.3f Hz\n"
     "  n %6d         fft input size; frequency resolution is f / n, for\n"
     "                   44.1 kHz it's %.3f Hz\n"
-    "  m %6d         fft output size; using bins %d to %d, %d total\n"
-    "  p      %09.7f power distribution to %d analyser lines:\n"
+    "  m %6d         fft output size\n"
+    "  b %6d         number of bins total (from %d to %d)\n"
+    "  p      %09.7f power distribution (p == 1 means linear)\n"
+    "  l %6d         number of analyser lines\n"
     ""
       , window_names[p.w]
       , p.s , p.n > p.s ? ", sequence zero-padded" : ""
       , p.r, p.d
       , 44100.0 / p.r / p.d
       , p.n, 44100.0 / p.n
-      , p.m, p.b0, p.b1, p.b
+      , p.m, p.b, p.b0, p.b1
       , p.p, p.l
   );
+
+  p.g = asa_distribute_bins(p.l, p.b, p.p);
 
   char *indent = "                  ";
   int wb = y_info_o(Y_OUT_CONT, "%s", indent);
@@ -224,6 +228,7 @@ void exit_handler(void) {
 
 int main(int argc, char **argv) {
   atexit(exit_handler);
+  y_set_log_level();
   y_info("%s", COMPILE);
 
   asa_t asa = &static_asa;

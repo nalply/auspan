@@ -17,7 +17,7 @@ int* asa_distribute_bins(int l, int b, double p) {
   int *lines = malloc(l * sizeof(int));
   if (!lines) y_oom();
 
-
+  if (l == b && p > 1) y_error("p > 1 not useful if l == b");
 
   // p == 1 means distribute linearly because p ^ x == 1 ^ x == 1, but we need
   // a special case: the formula for the exponents's sum diverges for p == 1 
@@ -101,8 +101,8 @@ int* asa_distribute_bins(int l, int b, double p) {
 
 
 void asa_init_fft(asa_t asa) {
-  asa->d = fftw_alloc_real(asa->param.n);
-  asa->c = fftw_alloc_complex(asa->param.m);
+  asa->d = fftw_alloc_real(asa->param.n);    // these sizes are needed by fftw3
+  asa->c = fftw_alloc_complex(asa->param.m); // rtfm fftw.org (see r2c_1d)
   if (!asa->d || !asa->c) y_oom();
   asa->plan = fftw_plan_dft_r2c_1d(
     asa->param.n, asa->d, asa->c, FFTW_ESTIMATE);
@@ -143,7 +143,7 @@ int asa_read(asa_t asa) {
 
       if (len == size) break;
       if (len == 0) return 0; // End of file
-      if (len == -1) y_error("skipping: %m");
+      if (len == -1) y_error("skipping: %s", y_strerr);
 
       size -= len;
     }
@@ -170,7 +170,7 @@ int asa_read(asa_t asa) {
     }
 
     // Error!
-    if (len == -1) y_error("read s16le: %m");
+    if (len == -1) y_error("read pcm: %s", y_strerr);
     
     size -= len;
     p += len;
@@ -227,41 +227,46 @@ void asa_lines(asa_t asa) {
   double *const d = asa->d;
   fftw_complex *const c = asa->c;
 
-  asa->max_mag = 0;
-  // starting at 1 because of next step
+  // calculate magnitudes from c[b0:b1] to d[1:b] (note 1 as first index for d)
   int b0 = asa->param.b0 - 1, b = asa->param.b + 1;
   for (int i = 1; i < b; i++) {
-    d[i] = hypot(c[i + b0][0], c[i + b0][1]); // assume hypot >= 0
+    d[i] = hypot(c[i + b0][0], c[i + b0][1]);
+  }
+
+  asa->max_mag = 0; // hypot() is non-negative, so 0 is the minimum possible
+
+  // combine bins from d[1:b] to d[0:l-1] (note from 1 to 0 as first index)
+  // and simultaneously find maximum magnitude of lines
+  int l = asa->param.l, *g = asa->param.g, j = 0, i;
+  for (i = 0; i < l; i++) {
+    d[i] = 0;
+    for (int k = 0; k < g[i]; k++) d[i] += d[j++];
+    d[i] /= (double)g[i];
+
     if (asa->max_mag < d[i]) asa->max_mag = d[i];
   }
 
-  int l = asa->param.l, *lines = asa->param.g, j = 0, i;
-  for (i = 0; i < l; i++) {
-    d[i] = 0;
-    for (int k = 0; k < lines[j]; k++) d[i] += d[j++];
-    d[i] /= (double)lines[j];
-  }
-  d[i] = -1;
+  // help debugging by setting -1 then clearing
+  if (i < asa->param.n) d[i] = -1;
+  i++;
+  for (; i < asa->param.n; i++) d[i] = 0;
 }
 
 
 void asa_write(asa_t asa) {
   y_assert(asa->param.b0 <= asa->param.b1);
 
-  const int b0 = asa->param.b0;
-  const int b = asa->param.b;
+  const int l = asa->param.l;
   const int fd = asa->fd_out;
-  uint8_t spectrum[b];
+  uint8_t spectrum[l];
 
-  for (int i = 0; i < b; i++) {
-    spectrum[i] = (uint8_t)(255 * asa->d[b0 + i] / asa->max_mag);
+  for (int i = 0; i < l; i++) {
+    spectrum[i] = (uint8_t)(255 * asa->d[i] / asa->max_mag);
   }
 
-  ssize_t result = write(fd, spectrum, b);
-  y_trc("spectrum #%d write(%d, <p>, %d): %ld", asa->num_out, fd, b, result);
-  if (result == -1) {
-    y_error("output error");
-  }
+  ssize_t result = write(fd, spectrum, l);
+  y_trc("spectrum #%d write(%d, p, %d): %ld", asa->num_out, fd, l, result);
+  if (result == -1) y_error("write: %s", y_strerr);
   asa->num_out++;
 }
 

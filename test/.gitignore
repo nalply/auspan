@@ -3,3 +3,5 @@ power
 *.dSYM
 *.d
 *.o
+asa-spectrum*
+asa.pcm

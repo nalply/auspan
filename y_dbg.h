@@ -1,14 +1,14 @@
-/* A macro only source file to implement colorful logging with levels:
- *   trc: output if Y_DBG=T, blue T 
- *   dbg: output if Y_DBG=D or Y_DBG=T cyan D
- *   info: output with green Info
- *   warn: output with yellow Warn
- *   error: output with red Error and exit with error code 1
- *   abort: output with magenta Abort and abort like assert
- * The macros return the bytes written so that one can implement word-breaking
- * together with the y_*_o() variants which allow logging in parts.
+/* A header only colorful logging implementation for C.
  *
- * Example log output (T, D, Info, Warn are colored)
+ * The levels:
+ *   trc:   blue    T     extremely verbose, output even inside loops 
+ *   dbg:   cyan    D     verbose, but avoid using inside loops
+ *   info:  green   Info  slightly verbose, important information only
+ *   warn:  yellow  Warn  only possible problems
+ *   error: red     Error real errors, exit with code 1 
+ *   abort: magenta Abort severe failure, abort
+ *
+ * Example log output:
  * T 2019-02-07 15:02:17 asa.c:78 seq #0: read(0, p, 8192): 2
  * T 2019-02-07 15:02:18 asa.c:78 seq #0: read(0, p, 8190): 0
  * D 2019-02-07 15:02:18 asa.c:88 invocation site of Info below:
@@ -18,6 +18,11 @@
  * D 2019-02-07 15:02:18 asa-s16le.c:279 number of sequences read: 0
  * D 2019-02-07 15:02:18 asa-s16le.c:280 number of spectrums written: 0
  * D 2019-02-07 15:02:18 asa-s16le.c:254 cleaning up
+ *
+ * Exactly one file must define Y_DBG_MAIN before including this header, for
+ * example the file with the main function. (If you don't do that, the linker
+ * will complain about missing symbols, and if you define more than once the
+ * linker will complain about duplicate symbols.)
  */
 #ifndef Y_DBG_H
 #define Y_DBG_H
@@ -25,21 +30,19 @@
 #include <stdio.h>
 #include <time.h>
 #include <stdlib.h>
+#include <errno.h>
 
-#define Y_DATE_TIME_BUF_SIZE 25
+extern unsigned int y_log_level;
+extern void y_set_log_level();
+extern char *y_time();
 
-static inline char *y_time() {
-  static char buf[Y_DATE_TIME_BUF_SIZE];
-  time_t now = time(NULL);
-  struct tm *local = localtime(&now);
-  strftime(buf, Y_DATE_TIME_BUF_SIZE, "%F %T ", local);
-  return buf;
-}
 
-#define Y_TRC  5
-#define Y_DBG  4
-#define Y_INFO 3
-#define Y_WARN 2
+#define Y_TRC   5
+#define Y_DBG   4
+#define Y_INFO  3
+#define Y_WARN  2
+#define Y_ERROR 1
+#define Y_ABORT 0
 
 #define Y_ANSI(x) "\e[" x "m"
 #define Y_RESET ""
@@ -55,8 +58,8 @@ static inline char *y_time() {
 #define Y_OUT_END 2
 #define Y_OUT_CONT 3
 
-#define Y_STRINGIFY0(line) ":" #line
-#define Y_STRINGIFY(line) Y_STRINGIFY0(line)
+#define _Y_STRINGIFY0(line) ":" #line
+#define Y_STRINGIFY(line) _Y_STRINGIFY0(line)
 #define Y_LINE_S Y_STRINGIFY(__LINE__)
 
 #define _Y_OUT(ansi_color, code, t, out, fmt, ...) ({ \
@@ -73,13 +76,13 @@ static inline char *y_time() {
   + ((out == Y_OUT || out == Y_OUT_END) ? (fputc('\n', stderr), 1) : 0); \
 })
 
-#define y_trc_o(out, fmt, ...) ({ y_level() >= Y_TRC \
+#define y_trc_o(out, fmt, ...) ({ y_log_level >= Y_TRC \
   ? _Y_OUT(Y_TCLR, "T", y_time(), out, fmt, ##__VA_ARGS__) : 0; \
 })
 
 #define y_trc(fmt, ...) ({ y_trc_o(Y_OUT, fmt, ##__VA_ARGS__); })
 
-#define y_dbg_o(out, fmt, ...) ({ y_level() >= Y_DBG \
+#define y_dbg_o(out, fmt, ...) ({ y_log_level >= Y_DBG \
   ? _Y_OUT(Y_DCLR, "D", y_time(), out, fmt, ##__VA_ARGS__) : 0; \
 })
 
@@ -89,7 +92,7 @@ static inline char *y_time() {
   y_dbg("invocation site of " Y_ANSI(ansi) code Y_ANSI(Y_RESET) " below:"); \
 })
 
-#define y_info_o(out, fmt, ...) ({ y_level() >= Y_INFO ? ( \
+#define y_info_o(out, fmt, ...) ({ y_log_level >= Y_INFO ? ( \
   (out <= Y_OUT_START ? _Y_INVOCATION_SITE(Y_ICLR, "Info") : 0) \
   + _Y_OUT(Y_ICLR, "Info", NULL, out, fmt, ##__VA_ARGS__)) : 0; \
 })
@@ -133,26 +136,40 @@ static inline char *y_time() {
 
 #define y_assert_e(expr, fmt, ...) _Y_ASSERT(expr, fmt, ##__VA_ARGS__)
 
-static inline int y_level() {
-  static unsigned int level = 0;
+#define y_strerr strerror(errno)
 
-  if (level == 0) {
-    char *y_log_level = getenv("Y_LOG");
-    if (y_log_level) {
-      if (y_log_level[0] == 'T')        level = Y_TRC;
-      else if (y_log_level[0] == 'D')   level = Y_DBG;
-      else if (y_log_level[0] == 'I')   level = Y_INFO;
-      else                              level = Y_WARN;
-      y_dbg("Y_LOG environment variable: '%s'", y_log_level);
-    }
-    else {
-      level = Y_INFO;
-    }
-    if (level > Y_TRC) abort();
-    y_info("log level set to %c", "AEWIDT"[level]);
-  }
+#endif
 
-  return level;
+#ifdef Y_DBG_MAIN
+// To be included by only one source file, for example by main.c or similar.
+
+unsigned int y_log_level = 0;
+
+void y_set_log_level() {
+  char *y_log_level_env = getenv("Y_LOG");
+  if (y_log_level_env) {
+    y_dbg("Y_LOG environment variable: '%s'", y_log_level_env);
+
+    if (y_log_level_env[0] == 'T')        y_log_level = Y_TRC;
+    else if (y_log_level_env[0] == 'D')   y_log_level = Y_DBG;
+    else if (y_log_level_env[0] == 'I')   y_log_level = Y_INFO;
+    else if (y_log_level_env[0] == 'W')   y_log_level = Y_WARN;
+    else { y_warn("invalid log level");   y_log_level = Y_INFO; }
+  } else                                  y_log_level = Y_INFO;
+
+  if (y_log_level > Y_TRC) abort();
+
+  y_info("log level set to %c", "AEWIDT"[y_log_level]);
+}
+
+#define Y_DATE_TIME_BUF_SIZE 25
+
+char *y_time() {
+  static char buf[Y_DATE_TIME_BUF_SIZE];
+  time_t now = time(NULL);
+  struct tm *local = localtime(&now);
+  strftime(buf, Y_DATE_TIME_BUF_SIZE, "%F %T ", local);
+  return buf;
 }
 
 #endif
