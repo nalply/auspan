@@ -9,3 +9,5 @@ The test programs should exercise one action defined in asa.h:
 
 - window: apply window in `asa_pad_and_window()`
 - power: distribute bins to lines in `asa_distribute_lines()`
+
+Todo: lines (test whether bins are correctly combined to lines)

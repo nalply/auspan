@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 TESTS="
 window 1 hann
 1 hann: nan
@@ -52,8 +51,6 @@ power 104 11 1
 104 11 1: 9 10 9 10 9 10 9 10 9 10 9 104
 power 1 1 1
 1 1 1: 1 1
-power 1 1 2
-1 1 2: 1 1
 power 10 1 1
 10 1 1: 10 10
 power 10 1 2

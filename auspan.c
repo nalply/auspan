@@ -17,8 +17,8 @@
 
 
 // TODO: autogenerate
-#define PROGRAM "ausa"
-#define VERSION "0.0.5"
+#define PROGRAM "auspan"
+#define VERSION "0.1.0"
 #define COMPILE PROGRAM " " VERSION " compiled at " __DATE__ " " __TIME__
 
 
@@ -34,9 +34,10 @@ static void usage(char* msg) {
   if (msg) fprintf(stderr, "\e[31;1mError: %s\e[m\n", msg);
   fputs(
     "Analyse audio and generate spectrums\n"
-    "Usage: " PROGRAM " [options] [input [output]]\n"
-    "  where input is s16le pcm und output u8 spectrum data,\n"
-    "  s16le is signed 16-bit little endian and u8 unsigned 8-bit integer\n"
+    "Usage: " PROGRAM " [options] [input-file [output-file]]\n"
+    "  where input-file is a s16le pcm source und output-file a file to\n"
+    "  which u8 spectrum data is APPENDED to; s16le is signed 16-bit little\n"
+    "  endian and u8 unsigned 8-bit integer\n"
     "\n"
     "Options:                            (x = 2^20 = 1048576, m = 1 + n / 2)\n"
     "  -v print version                       default   limits\n"
@@ -62,7 +63,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   asa_param_t p = { 
     .s = 32, .n = 32, .m = 17, 
     .b0 = 1, .b1 = 15, .b = 15,
-    .p = 2.0, .l = 15,
+    .p = 1.0, .l = 15,
     .r = 1, .d = 32,
     .w = W_HANN,
   };
@@ -179,7 +180,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   }
 
   y_info_o(Y_OUT_START, ""
-    "Running with these parameters:                  (f: sampling frequency)\n"
+    "Running with these parameters: (f: sampling frequency)\n"
     "  w %-14s window function\n"
     "  s %6d         number of samples in a sequence%s\n"
     "  r %6d         number of sequences used per generated spectrum\n"
@@ -190,7 +191,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
     "  m %6d         fft output size\n"
     "  b %6d         number of bins total (from %d to %d)\n"
     "  p      %09.7f power distribution (p == 1 means linear)\n"
-    "  l %6d         number of analyser lines\n"
+    "  l %6d         number of lines with distribution from bins as:\n"
     ""
       , window_names[p.w]
       , p.s , p.n > p.s ? ", sequence zero-padded" : ""
@@ -209,7 +210,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
     wb += y_info_o(Y_OUT_CONT, " %d", p.g[j]);
     if (wb > 70) { wb = 0; y_info_o(Y_OUT_CONT, "\n%s", indent); }
   }
-  y_info_o(Y_OUT_END, "\n%s sum %d", indent, sum(p.g, p.l));
+  y_info_o(Y_OUT_END, "");
   y_assert(sum(p.g, p.l) == p.b);
 
   asa->param = p;

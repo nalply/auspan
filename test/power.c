@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define Y_DBG_MAIN
+#include <y_dbg.h>
+
 __attribute__((noreturn))
 static void usage() {
   fprintf(stderr, "Usage: power <b> <l> <p>\n"
