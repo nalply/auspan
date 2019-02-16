@@ -26,6 +26,7 @@ however I need to make it more user-friendly, too.
 ## Todo
 
 - More tests (especially integration tests from generated audio from pcm.jl)
+- Invalid parameter tests
 - Gravity and other scaling options
 - Options to make frequency calculations easier "so this spectrum line is at
   440 Hz"

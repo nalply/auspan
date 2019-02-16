@@ -14,10 +14,11 @@ const char* window_names[] = {
 const int x = 1 << 20;
 
 int* asa_distribute_bins(int l, int b, double p) {
+  y_assert(p >= 1.0 && p <= 2.0);
+  y_assert_e(p == 1.0 || l != b, "for b == l avoid p > 1");
+
   int *lines = malloc(l * sizeof(int));
   if (!lines) y_oom();
-
-  if (l == b && p > 1) y_error("p > 1 not useful if l == b");
 
   // p == 1 means distribute linearly because p ^ x == 1 ^ x == 1, but we need
   // a special case: the formula for the exponents's sum diverges for p == 1 
@@ -30,9 +31,7 @@ int* asa_distribute_bins(int l, int b, double p) {
     return lines;
   }
 
-  y_assert(p > 1.0 && p <= 2.0);
-  double g[l];
-  
+  double g[l];  
   int wb = y_dbg_o(Y_OUT_START, "lines: approximation:");
   for (int j = 0; j < l; j++) {
     double r = b * (1-p) * pow(p, j) / (1 - pow(p, l));

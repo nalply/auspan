@@ -39,7 +39,7 @@ static void usage(char* msg) {
     "  which u8 spectrum data is APPENDED to; s16le is signed 16-bit little\n"
     "  endian and u8 unsigned 8-bit integer\n"
     "\n"
-    "Options:                            (x = 2^20 = 1048576, m = 1 + n / 2)\n"
+    "Options: (x = 2^20 = 1048576, m = 1 + n / 2)\n"
     "  -v print version                       default   limits\n"
     "  -s number of samples taken in a sequence    32   1 <= s <= x\n"
     "  -r number of sequences per spectrum          1   1 <= r <= 999\n"
@@ -47,12 +47,13 @@ static void usage(char* msg) {
     "         or in % of s                       100%   1% <= d <= 10000%\n"
     "     spectrums output at frequency: sampling frequency / d / r\n"
     "  -w window function, one of: boxcar hann flattop blackmanharris,\n"
-    "     default hann\n"
+    "         default hann\n"
     "  -n fft size with zero padding                s   s <= n <= x\n"
     "  -b b0,b1 use bins from b0 to b1          1,m-2   0 <= b0 <= b1 <= m-1\n"
-    "     spectrums contain b = b1 - b0 unsigned 8-bit bins\n"
+    "         being used: b = b1 - b0 unsigned 8-bit bins\n"
     "  -p distribute bins to the power of p         1   1 <= p <= 2\n"
     "  -l number of spectrum lines                  b   1 <= l <= b\n"
+    "         if b == l then only p == 1 is allowed\n"
     "", stderr
   );
   exit(127);
@@ -155,6 +156,7 @@ static void parse_args(int argc, char **argv, asa_t asa) {
   if (p.b0 > p.b1) usage("-b rule b0 <= b1 broken");
   if (p.b1 > p.m - 1) usage("-b rule b1 <= m-1 broken");
   if (p.l < 1 || p.l > p.b) usage("-l out of limit");
+  if (!(p.p == 1.0 || p.l != p.b)) usage("if b == l then only p == 1 allowed");
   if (argc - optind > 3) usage("too many parameters");
 
   if (argc - optind == 0) {
